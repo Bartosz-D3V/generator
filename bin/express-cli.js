@@ -55,6 +55,7 @@ program
   .option('-v, --view <engine>', 'add view <engine> support (dust|ejs|hbs|hjs|jade|pug|twig|vash) (defaults to jade)')
   .option('    --no-view', 'use static html instead of view engine')
   .option('-c, --css <engine>', 'add stylesheet <engine> support (less|stylus|compass|sass) (defaults to plain css)')
+  .option('-ts,--typescript', 'add typescript support')
   .option('    --git', 'add .gitignore')
   .option('-f, --force', 'force on non-empty directory')
   .parse(process.argv)
@@ -107,7 +108,7 @@ function confirm (msg, callback) {
 }
 
 /**
- * Copy file from template directory.
+ * Copy file from template directory.app.use(logger
  */
 
 function copyTemplate (from, to) {
@@ -147,12 +148,21 @@ function createApplication (name, dir) {
     dependencies: {
       'debug': '~2.6.9',
       'express': '~4.16.0'
-    }
+    },
+    devDependencies: {}
   }
 
-  // JavaScript
-  var app = loadTemplate('js/app.js')
-  var www = loadTemplate('js/www')
+  var app
+  var www
+
+  if (program.typescript || program.ts) {
+    app = loadTemplate('ts/app.ts')
+    www = loadTemplate('ts/www')
+    pkg.scripts.prestart = 'tsc'
+  } else {
+    app = loadTemplate('js/app.js')
+    www = loadTemplate('js/www')
+  }
 
   // App name
   www.locals.name = name
@@ -207,7 +217,19 @@ function createApplication (name, dir) {
 
   // copy route templates
   mkdir(dir, 'routes')
-  copyTemplateMulti('js/routes', dir + '/routes', '*.js')
+  if (program.typescript || program.ts) {
+    copyTemplateMulti('ts/routes', dir + '/routes', '*.ts')
+    copyTemplate('ts/tsconfig.json', path.join(dir, 'tsconfig.json'))
+    pkg.devDependencies['ts-node'] = '^5.0.0'
+    pkg.devDependencies['typescript'] = '^2.7.2'
+    pkg.devDependencies['@types/cookie-parser'] = '^1.4.1'
+    pkg.devDependencies['@types/express'] = '^4.11.1'
+    pkg.devDependencies['@types/http-errors'] = '^1.6.1'
+    pkg.devDependencies['@types/node'] = '^9.4.6'
+    pkg.devDependencies['@types/morgan'] = '^1.7.35'
+  } else {
+    copyTemplateMulti('js/routes', dir + '/routes', '*.js')
+  }
 
   if (program.view) {
     // Copy view templates
@@ -323,14 +345,16 @@ function createApplication (name, dir) {
   app.locals.uses.push("express.static(path.join(__dirname, 'public'))")
 
   if (program.git) {
-    copyTemplate('js/gitignore', path.join(dir, '.gitignore'))
+    var gitignoreLocation = program.typescript ? 'ts/gitignore' : 'js/gitignore'
+    copyTemplate(gitignoreLocation, path.join(dir, '.gitignore'))
   }
 
   // sort dependencies like npm(1)
   pkg.dependencies = sortedObject(pkg.dependencies)
 
   // write files
-  write(path.join(dir, 'app.js'), app.render())
+  var appName = program.typescript ? 'app.ts' : 'app.js'
+  write(path.join(dir, appName), app.render())
   write(path.join(dir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
   mkdir(dir, 'bin')
   write(path.join(dir, 'bin/www'), www.render(), MODE_0755)
