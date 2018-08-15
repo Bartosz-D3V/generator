@@ -3,13 +3,14 @@ import createError from 'http-errors';
 import express from 'express';
 import path from 'path';
 import { Response, Request, NextFunction } from 'express';
+import { ResponseError } from './types/response-error';
 <% } -%>
 <% Object.keys(modules).sort().forEach(function (variable) { -%>
-import { <%- variable %> } from '<%- modules[variable] %>';
+import <%- variable %> from '<%- modules[variable] %>';
 <% }); -%>
 
 <% Object.keys(localModules).sort().forEach(function (variable) { -%>
-import { <%- variable %> } from '<%- localModules[variable] %>';
+import <%- variable %> from '<%- localModules[variable] %>';
 <% }); -%>
 
 const app = express();
@@ -38,7 +39,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 // error handler
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: ResponseError, req: Request, res: Response, next: NextFunction) => {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};

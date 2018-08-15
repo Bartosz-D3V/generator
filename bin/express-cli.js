@@ -142,9 +142,7 @@ function createApplication (name, dir) {
     name: name,
     version: '0.0.0',
     private: true,
-    scripts: {
-      start: 'node ./bin/www'
-    },
+    scripts: {},
     dependencies: {
       'debug': '~2.6.9',
       'express': '~4.16.0'
@@ -157,11 +155,13 @@ function createApplication (name, dir) {
 
   if (program.typescript || program.ts) {
     app = loadTemplate('ts/app.ts')
-    www = loadTemplate('ts/www')
+    www = loadTemplate('ts/www.ts')
     pkg.scripts.prestart = 'tsc'
+      pkg.scripts.start = 'node ./dist/bin/www'
   } else {
     app = loadTemplate('js/app.js')
     www = loadTemplate('js/www')
+      pkg.scripts.start = 'node ./bin/www'
   }
 
   // App name
@@ -218,7 +218,9 @@ function createApplication (name, dir) {
   // copy route templates
   mkdir(dir, 'routes')
   if (program.typescript || program.ts) {
+    mkdir(dir, 'types')
     copyTemplateMulti('ts/routes', dir + '/routes', '*.ts')
+      copyTemplateMulti('ts/types/', dir + '/types', '*.d.ts')
     copyTemplate('ts/tsconfig.json', path.join(dir, 'tsconfig.json'))
     pkg.devDependencies['ts-node'] = '^5.0.0'
     pkg.devDependencies['typescript'] = '^2.7.2'
@@ -357,7 +359,11 @@ function createApplication (name, dir) {
   write(path.join(dir, appName), app.render())
   write(path.join(dir, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
   mkdir(dir, 'bin')
+    if(program.typescript){
+        write(path.join(dir, 'bin/www.ts'), www.render(), MODE_0755)
+    }else{
   write(path.join(dir, 'bin/www'), www.render(), MODE_0755)
+    }
 
   var prompt = launchedFromCmd() ? '>' : '$'
 
